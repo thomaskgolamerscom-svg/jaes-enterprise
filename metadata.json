@@ -1,0 +1,8 @@
+{
+  "name": "Jae's Enterprise",
+  "description": "Global Procurement & Strategic Sourcing Solutions based in Dubai, United Arab Emirates.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
