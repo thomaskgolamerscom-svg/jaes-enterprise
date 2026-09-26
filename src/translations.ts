@@ -13,7 +13,7 @@ export const translations: TranslationMap = {
   navServices: { en: "How We Help", ar: "كيف نساعدك" },
   navIndustries: { en: "Things We Find", ar: "أشياء نجدها لك" },
   navProjects: { en: "Our Successes", ar: "أعمالنا السابقة" },
-  navNetwork: { en: "Meetings & Sourcing", ar: "شراكتنا وتنسيقنا" },
+  navNetwork: { en: "Global Trading Network", ar: "شبكة التجارة العالمية" },
   navRFQ: { en: "Order Products", ar: "اطلب بضاعة" },
   navContact: { en: "Call/Write Us", ar: "اطلب المساعدة" },
 
@@ -156,10 +156,16 @@ export const translations: TranslationMap = {
   proj5Desc: { en: "We safely brought precise hardware spares and composite replacement sheets to keep regional passenger flights safe.", ar: "وفرنا قطع غيار ومسامير أصلية لورش الطيران للحفاظ على أمان المسافرين." },
   proj5Stat: { en: "Our Service Score: 99.9%", ar: "معدل سلامة الخدمة لدينا: ٩٩.٩٪" },
 
-  // Supplier Network Map -> Now Corporate Meetings & Presence
-  networkTitle: { en: "Our Dubai Sourcing Coordination", ar: "تنسيق المشتريات بمكتب دبي" },
-  networkSub: { en: "See how we coordinate our world offices directly from our Dubai center", ar: "كيف نقوم بتنسيق وإدارة عمليات الاستيراد من مقرنا في دبي" },
-  networkDesc: { en: "Our Dubai team gathers around the conference table to align on factory safety audits, custom clearance papers, and tracking your shipping boxes.", ar: "يجتمع فريقنا في دبي أسبوعياً لمراجعة سجلات الموردين، وتخليص الأوراق، وضمان وصول شحنتك بسلام." },
+  // Global Trading Network / International Presence
+  globalTradingNetworkBadge: { en: "INTERNATIONAL PRESENCE", ar: "التواجد التجاري الدولي" },
+  globalTradingNetworkTitle: { en: "Global Trading Network", ar: "شبكة التجارة العالمية" },
+  globalTradingNetworkSub: { en: "MIDDLE EAST  •  EUROPE  •  AFRICA  •  ASIA  •  NORTH AMERICA  •  SOUTH AMERICA", ar: "الشرق الأوسط  •  أوروبا  •  إفريقيا  •  آسيا  •  أمريكا الشمالية  •  أمريكا الجنوبية" },
+  globalTradingNetworkDesc: { en: "Jae's Enterprise operates internationally, trading and coordinating strategic procurement, supply chain logistics, and cross-border commercial facilitation through strategically positioned regional commercial hubs.", ar: "تعمل شركة جايز انتربرايز دولياً عبر مراكز ومواقع تجارية إقليمية لتنسيق المشتريات وسلاسل التوريد والخدمات اللوجستية للمشترين والمؤسسات حول العالم." },
+
+  // Supplier Network Map & Corporate Meetings
+  networkTitle: { en: "Global Trading Network & Commercial Operations", ar: "شبكة التجارة العالمية والعمليات التجارية" },
+  networkSub: { en: "International trade facilitation coordinated through strategic regional hubs worldwide", ar: "تسهيل التجارة الدولية والتنسيق من خلال مراكز تجارية إقليمية استراتيجية حول العالم" },
+  networkDesc: { en: "Our operations coordinate factory verification, customs compliance documentation, and multi-modal logistics across Europe, the Middle East, Africa, Asia, North America, and South America.", ar: "يقوم فريقنا بتنسيق تدقيق المصانع والتوثيق الجمركي والخدمات اللوجستية عبر أوروبا والشرق الأوسط وإفريقيا وآسيا وأمريكا الشمالية وأمريكا الجنوبية." },
 
   // RFQ Form
   rfqTitle: { en: "Tell Us What Product We Can Find for You", ar: "اطلب بضاعة أو منتجاً وسنجده لك" },
@@ -193,9 +199,10 @@ export const translations: TranslationMap = {
   lblSubject: { en: "What is this about?", ar: "موضوع رسالتك" },
   lblMessage: { en: "Your Message (Write freely)", ar: "رسالتك (اكتب لنا ما تريده بكلماتك الخاصة)" },
   btnSubmitContact: { en: "Send Message Now", ar: "إرسال رسالتي الآن" },
-  contactEmailUs: { en: "Send Us a Direct Email", ar: "عناوين بريدنا الإلكتروني المباشر" },
-  contactHQLocation: { en: "Our Dubai Headquarters Address", ar: "عنوان مقرنا الرئيسي في دبي" },
-  contactHQDetail: { en: "Office Suite 42, Floor 15, Rolex Tower, Sheikh Zayed Road, Dubai, United Arab Emirates", ar: "مكتب جناح ٤٢، الطابق ١٥، برج رولكس، شارع الشيخ زايد، دبي، الإمارات العربية المتحدة" },
+  contactEmailUs: { en: "Send Us a Direct Email", ar: "عنوان بريدنا الإلكتروني المباشر" },
+  contactGlobalCoordination: { en: "Global Office & Coordination Locations", ar: "مواقع المكاتب والتنسيق الإقليمي العالمي" },
+  contactHQLocation: { en: "Regional Coordination Office", ar: "مكتب التنسيق الإقليمي" },
+  contactHQDetail: { en: "Rolex Tower, Sheikh Zayed Road, Dubai, United Arab Emirates", ar: "برج رولكس، شارع الشيخ زايد، دبي، الإمارات العربية المتحدة" },
   contactCoverageZones: { en: "Port & Airport Shipping Paths", ar: "طرق شحن السفن والمطارات لدينا" },
   contactCoverageDetail: { en: "We safely load and unload boxes via Dubai Port of Jebel Ali, Fujairah Anchor, or Al Maktoum Cargo Port.", ar: "نقوم بتنزيل وتفريغ الصناديق في ميناء جبل علي، ميناء الفجيرة، ومطار آل مكتوم مجاناً." },
 

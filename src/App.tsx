@@ -37,11 +37,99 @@ import {
   Users
 } from "lucide-react";
 
+// Target configured procurement statistics
+const procurementStats = {
+  countries: 45,
+  suppliers: 1200,
+  contracts: 980,
+  continents: 6
+};
+
+// Reusable JAES Logo Badge preserving exact original branding proportions
+function JaesLogoBadge({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
+  const dim = size === "sm" ? "w-6 h-6 rounded-md" : size === "lg" ? "w-20 h-20 rounded-2xl" : "w-14 h-14 rounded-xl";
+  const innerDim = size === "sm" ? "w-3 h-3" : size === "lg" ? "w-8 h-8" : "w-6 h-6";
+  const fontSize = size === "sm" ? "text-[5.5px]" : size === "lg" ? "text-[11px]" : "text-[8.5px]";
+
+  return (
+    <div className={`relative flex items-center justify-center ${dim} bg-gradient-to-br from-emerald-800 to-emerald-950 border border-emerald-500/25 shadow-md flex-shrink-0`}>
+      {/* Globe orbits logo */}
+      <div className="absolute inset-1 border border-slate-300/30 rounded-full animate-[spin_15s_linear_infinite]" />
+      <div className={`${innerDim} bg-gradient-to-tr from-emerald-500 to-slate-100 rotate-45 rounded-sm shadow-inner flex items-center justify-center`}>
+        <span className={`${fontSize} text-emerald-900 font-extrabold -rotate-45`}>JE</span>
+      </div>
+    </div>
+  );
+}
+
+// JAES Logo Loading Indicator with subtle, premium scale & opacity pulse
+function JaesLoadingIndicator({
+  label,
+  subtitle,
+  lang = "en"
+}: {
+  label?: string;
+  subtitle?: string;
+  lang?: "en" | "ar";
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center select-none text-center max-w-sm mx-auto p-4">
+      {/* Centered JAES logo with soft pulse */}
+      <div className="animate-jaes-loader flex flex-col items-center">
+        <div className="relative flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-emerald-800 to-emerald-950 border border-emerald-500/30 shadow-2xl">
+          {/* Globe orbits logo */}
+          <div className="absolute inset-1.5 border border-slate-300/30 rounded-full animate-[spin_15s_linear_infinite]" />
+          <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-tr from-emerald-500 to-slate-100 rotate-45 rounded-sm shadow-inner flex items-center justify-center">
+            <span className="text-[10px] sm:text-xs text-emerald-900 font-extrabold -rotate-45">JE</span>
+          </div>
+        </div>
+
+        {/* Logo Wordmark */}
+        <div className="flex flex-col items-center mt-4">
+          <span className="font-extrabold text-[17px] sm:text-[19px] leading-tight tracking-[0.1em] text-slate-900 font-sans">
+            JAE'S <span className="text-emerald-700">ENTERPRISE</span>
+          </span>
+          <span className="text-[9px] sm:text-[10px] font-mono font-bold tracking-[0.22em] text-slate-500 uppercase mt-0.5">
+            {lang === "en" ? "Procurement & Sourcing" : "المشتريات والتوريد"}
+          </span>
+        </div>
+      </div>
+
+      {/* Subtle emerald shimmer progress line */}
+      <div className="w-24 h-1 bg-slate-100 rounded-full overflow-hidden mt-6">
+        <div className="w-full h-full bg-gradient-to-r from-emerald-600 via-emerald-400 to-emerald-700 rounded-full animate-pulse" />
+      </div>
+
+      {label && (
+        <p className="mt-3.5 text-xs font-mono font-bold text-slate-800 uppercase tracking-wider">
+          {label}
+        </p>
+      )}
+
+      {subtitle && (
+        <p className="mt-1 text-xs text-slate-500 font-serif leading-relaxed px-2">
+          {subtitle}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function App() {
   const [lang, setLang] = useState<"en" | "ar">("en");
   const [activePage, setActivePage] = useState<string>("home");
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [legalDoc, setLegalDoc] = useState<null | "privacy" | "terms" | "disclaimer">(null);
+  const [initialLoading, setInitialLoading] = useState<boolean>(true);
+  const [pageLoading, setPageLoading] = useState<boolean>(false);
+
+  useEffect(() => {
+    // Initial page load duration (smooth transition of 600ms)
+    const timer = setTimeout(() => {
+      setInitialLoading(false);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Contact Form State
   const [contactForm, setContactForm] = useState({
@@ -74,9 +162,75 @@ export default function App() {
   const [rfqSuccess, setRfqSuccess] = useState<boolean>(false);
   const [rfqRefId, setRfqRefId] = useState<string>("");
   const [dragging, setDragging] = useState<boolean>(false);
+  const [smtpStatus, setSmtpStatus] = useState<{
+    isSMTPReady?: boolean;
+    isSMTPConfigured?: boolean;
+    smtpError?: string;
+  }>({});
 
-  // Reading Options Choice for advanced/senior citizens (easy, cozy, classic)
-  const [displayPattern, setDisplayPattern] = useState<"classic" | "warm" | "bigText">("bigText");
+  // Viewport animated count-up counters
+  const statsSectionRef = useRef<HTMLElement | null>(null);
+  const [hasAnimatedStats, setHasAnimatedStats] = useState<boolean>(false);
+  const [animatedStats, setAnimatedStats] = useState({
+    countries: 0,
+    suppliers: 0,
+    contracts: 0,
+    continents: 0
+  });
+
+  useEffect(() => {
+    // Respect prefers-reduced-motion
+    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setAnimatedStats(procurementStats);
+      setHasAnimatedStats(true);
+      return;
+    }
+
+    const currentRef = statsSectionRef.current;
+    if (!currentRef) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting && !hasAnimatedStats) {
+          setHasAnimatedStats(true);
+          observer.disconnect();
+
+          const duration = 1800; // 1.8 seconds (smooth 1.5 - 2s)
+          const startTime = performance.now();
+
+          const step = (currentTime: number) => {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            // Smooth easeOutCubic
+            const ease = 1 - Math.pow(1 - progress, 3);
+
+            setAnimatedStats({
+              countries: Math.floor(ease * procurementStats.countries),
+              suppliers: Math.floor(ease * procurementStats.suppliers),
+              contracts: Math.floor(ease * procurementStats.contracts),
+              continents: Math.floor(ease * procurementStats.continents)
+            });
+
+            if (progress < 1) {
+              requestAnimationFrame(step);
+            } else {
+              setAnimatedStats(procurementStats);
+            }
+          };
+
+          requestAnimationFrame(step);
+        }
+      },
+      { threshold: 0.15 }
+    );
+
+    observer.observe(currentRef);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasAnimatedStats]);
 
   const t = (key: string) => {
     return translations[key]?.[lang] || key;
@@ -87,11 +241,22 @@ export default function App() {
     // Persist or mirror layout logic
   };
 
-  // Switch tabs and scroll smoothly to view
+  // Switch tabs and scroll smoothly to view with JAES logo transition
   const navigateTo = (page: string) => {
-    setActivePage(page);
+    if (page === activePage) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      setMobileMenuOpen(false);
+      return;
+    }
+    setPageLoading(true);
     setMobileMenuOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
+    setTimeout(() => {
+      setActivePage(page);
+      setTimeout(() => {
+        setPageLoading(false);
+      }, 240);
+    }, 160);
   };
 
   // File Upload base64 Parsing
@@ -145,6 +310,11 @@ export default function App() {
       });
       const data = await response.json();
       if (data.success) {
+        setSmtpStatus({
+          isSMTPReady: data.isSMTPReady,
+          isSMTPConfigured: data.isSMTPConfigured,
+          smtpError: data.smtpError
+        });
         setContactRefId(data.referenceId);
         setContactSuccess(true);
         setContactForm({
@@ -161,7 +331,11 @@ export default function App() {
       }
     } catch (err) {
       console.error(err);
-      alert("Executive SMTP connection simulation completed. Message logged successfully.");
+      setSmtpStatus({
+        isSMTPReady: false,
+        isSMTPConfigured: false,
+        smtpError: "Vite dev server catch block activated during local transit."
+      });
       setContactSuccess(true);
       setContactRefId(`E-MIM-${Math.floor(Math.random() * 9000 + 1000)}`);
     } finally {
@@ -185,6 +359,11 @@ export default function App() {
       });
       const data = await response.json();
       if (data.success) {
+        setSmtpStatus({
+          isSMTPReady: data.isSMTPReady,
+          isSMTPConfigured: data.isSMTPConfigured,
+          smtpError: data.smtpError
+        });
         setRfqRefId(data.rfqReference);
         setRfqSuccess(true);
         setRfqForm({
@@ -204,7 +383,11 @@ export default function App() {
       }
     } catch (err) {
       console.error(err);
-      alert("Global RFQ Route simulation matched. RFQ details printed to the logistics pipeline.");
+      setSmtpStatus({
+        isSMTPReady: false,
+        isSMTPConfigured: false,
+        smtpError: "Vite dev server catch block activated during local transit."
+      });
       setRfqSuccess(true);
       setRfqRefId(`RFQ-MIM-${Math.floor(Math.random() * 9000 + 1000)}`);
     } finally {
@@ -231,71 +414,220 @@ export default function App() {
     { id: "manufacturing", key: "indManufacturing", descKey: "indManufacturingDesc", icon: Package, origin: "East Asia / Japan", dispatch: "Intermodal Container Liners" }
   ];
 
-  // Map Data for Supplier Network Coverage Page
-  const regions = {
-    me: {
-      name: lang === "en" ? "Middle East (Dubai Hub)" : "الشرق الأوسط (مركز دبي)",
-      manufacturers: "420+ Audited",
-      avgLead: "2-4 Days Priority Transit",
-      iso: "ISO 9001, OHSAS 18001",
-      pathways: "Port of Jebel Ali, Fujairah Bunkering, UAE Air Hubs",
-      coord: "w-[12%] h-[12%] left-[53%] top-[41%]"
+  // Global Trading Network Locations (Middle East, Europe, Africa, Asia, North America, South America)
+  const tradingLocations = [
+    {
+      region: "MIDDLE EAST",
+      regionAr: "الشرق الأوسط",
+      city: "Dubai",
+      country: "United Arab Emirates",
+      cityCountryAr: "دبي، الإمارات العربية المتحدة",
+      hubType: "Global Headquarters & Regional Hub",
+      hubTypeAr: "المقر الرئيسي العالمي والمركز الإقليمي",
+      description: "Coordinating international procurement management, bilateral trade corridors, and GCC/MENA commercial operations.",
+      descriptionAr: "إدارة وتنسيق المشتريات الدولية وممرات التجارة الثنائية والعمليات التجارية في الخليج والشرق الأوسط.",
+      highlight: "Global Operations & Trade Coordination",
+      highlightAr: "العمليات الدولية وإدارة التجارة",
+      code: "ME"
     },
-    eu: {
-      name: lang === "en" ? "European Industrial Zone" : "منطقة الصناعة الأوروبية",
-      manufacturers: "310+ Audited",
-      avgLead: "5-10 Days Ocean / Air Express",
-      iso: "CE Certification, ISO 14001",
-      pathways: "Rotterdam, Frankfurt Cargo, Hamburg Corridor",
-      coord: "w-[12%] h-[12%] left-[45%] top-[25%]"
+    {
+      region: "EUROPE",
+      regionAr: "أوروبا",
+      city: "Rotterdam",
+      country: "Netherlands",
+      cityCountryAr: "روتردام، هولندا",
+      hubType: "European Trading Office & Logistics Hub",
+      hubTypeAr: "مكتب التجارة واللوجستيات الأوروبي",
+      description: "Supporting commercial trade and logistics across Europe. Conducting business with companies and sectors throughout Europe while maintaining a strategically positioned European trading presence.",
+      descriptionAr: "دعم التجارة واللوجستيات في جميع أنحاء أوروبا. إدارة وتسيير التعاملات التجارية مع الشركات ومختلف القطاعات في كافة أرجاء أوروبا عبر تواجد تجاري أوروبي ذي موقع استراتيجي.",
+      highlight: "Supporting commercial trade and logistics across Europe",
+      highlightAr: "دعم التجارة واللوجستيات عبر أوروبا",
+      code: "EU"
     },
-    asia: {
-      name: lang === "en" ? "Asia-Pacific Supply Corridors" : "كوريدورات إمداد آسيا والمحيط الهادئ",
-      manufacturers: "550+ Audited",
-      avgLead: "8-14 Days Consolidated Freight",
-      iso: "JIS Standards, ISO 50001 Energy",
-      pathways: "Singapore, Shanghai deepwater, Shenzhen, Tokyo Air Center",
-      coord: "w-[12%] h-[12%] left-[68%] top-[33%]"
+    {
+      region: "AFRICA",
+      regionAr: "إفريقيا",
+      city: "Lagos",
+      country: "Nigeria",
+      cityCountryAr: "لاغوس، نيجيريا",
+      hubType: "Regional Commercial Hub",
+      hubTypeAr: "المركز التجاري الإقليمي",
+      description: "Supporting commercial trade operations, commodities procurement, and industrial supply logistics across the African continent.",
+      descriptionAr: "دعم العمليات التجارية وتوريد السلع الأساسية والمواد واللوجستيات الصناعية عبر القارة الإفريقية.",
+      highlight: "West African & Continental Trade Logistics",
+      highlightAr: "لوجستيات التجارة لغرب إفريقيا والقارة",
+      code: "AF"
     },
-    af: {
-      name: lang === "en" ? "African Materials & Sourcing Desk" : "المكتب الإفريقي للمواد والتوريد",
-      manufacturers: "120+ Audited",
-      avgLead: "6-12 Days Sea Bulk Cargo",
-      iso: "SGS Audited, Ethical Sourcing Certified",
-      pathways: "Durban Terminal, Port of Mombasa, Cairo Link Gate",
-      coord: "w-[12%] h-[12%] left-[48%] top-[55%]"
+    {
+      region: "ASIA",
+      regionAr: "آسيا",
+      city: "Singapore",
+      country: "Singapore",
+      cityCountryAr: "سنغافورة",
+      hubType: "Regional Trading Hub",
+      hubTypeAr: "المركز التجاري الإقليمي",
+      description: "Connecting Asia-Pacific manufacturing ecosystems, industrial components, and maritime logistics corridors.",
+      descriptionAr: "ربط شبكات المصنعين في آسيا والمحيط الهادئ والمكونات الصناعية وممرات الملاحة البحرية الدولية.",
+      highlight: "Asia-Pacific Manufacturer & Maritime Corridors",
+      highlightAr: "سلاسل تصنيع آسيا والمحيط الهادئ والملاحة",
+      code: "AP"
     },
-    na: {
-      name: lang === "en" ? "North American Compliance Plants" : "منشآت الامتثال لأمريكا الشمالية",
-      manufacturers: "180+ Audited",
-      avgLead: "7-12 Days Intercontinental Surcharged",
-      iso: "FDA, ANSI Certified, ISO 9001",
-      pathways: "Houston Marine Gate, LAX Cargo Complex, Chicago Rail Axis",
-      coord: "w-[12%] h-[12%] left-[20%] top-[28%]"
+    {
+      region: "NORTH AMERICA",
+      regionAr: "أمريكا الشمالية",
+      city: "Miami",
+      country: "United States",
+      cityCountryAr: "ميامي، الولايات المتحدة الأمريكية",
+      hubType: "Regional Commercial Hub",
+      hubTypeAr: "المركز التجاري الإقليمي",
+      description: "Facilitating transatlantic trade coordination, industrial equipment procurement, and inter-American logistics.",
+      descriptionAr: "تسهيل وتنسيق التجارة عبر الأطلسي ومشتريات المعدات الصناعية واللوجستيات التجارية في الأمريكتين.",
+      highlight: "Transatlantic Trade & Machinery Procurement",
+      highlightAr: "التجارة عبر الأطلسي وتوريد الآلات",
+      code: "NA"
     },
-    sa: {
-      name: lang === "en" ? "South American Supply Base" : "قاعدة توريد أمريكا الجنوبية",
-      manufacturers: "90+ Audited",
-      avgLead: "10-18 Days Freight Liner",
-      iso: "Global GAP, ISO 14001 Standards",
-      pathways: "Santos Maritime Port, Buenos Aires Cargo link",
-      coord: "w-[12%] h-[12%] left-[28%] top-[60%]"
+    {
+      region: "SOUTH AMERICA",
+      regionAr: "أمريكا الجنوبية",
+      city: "São Paulo",
+      country: "Brazil",
+      cityCountryAr: "ساو باولو، البرازيل",
+      hubType: "Regional Trading Hub",
+      hubTypeAr: "المركز التجاري الإقليمي",
+      description: "Supporting commercial trade relationships, agricultural commodities, and raw materials supply chain coordination.",
+      descriptionAr: "دعم العلاقات التجارية وتوريد السلع الزراعية والمواد الخام الصناعية وتنسيق سلاسل الإمداد في أمريكا الجنوبية.",
+      highlight: "Agricultural & Raw Material Supply Corridors",
+      highlightAr: "إمدادات السلع الزراعية والمواد الخام",
+      code: "SA"
     }
-  };
+  ];
 
-  const getContainerClassName = () => {
-    let base = "min-h-screen antialiased flex flex-col transition-colors duration-300 ";
-    if (displayPattern === "bigText") {
-      return base + "bg-white text-slate-950 font-sans text-lg md:text-xl selection:bg-emerald-700 selection:text-white";
-    } else if (displayPattern === "warm") {
-      return base + "bg-[#fbf9f3] text-stone-900 font-serif text-base md:text-lg selection:bg-amber-800 selection:text-white";
-    } else {
-      return base + "bg-slate-50 text-slate-800 font-serif text-sm md:text-base selection:bg-emerald-600 selection:text-white";
+  // Global Office & Coordination Locations (6 Regional Hubs)
+  const coordinationLocations = [
+    {
+      region: "MIDDLE EAST",
+      regionSub: "DUBAI, UAE",
+      regionAr: "الشرق الأوسط — دبي، الإمارات",
+      officeType: "Regional Coordination Office",
+      officeTypeAr: "مكتب التنسيق الإقليمي",
+      address: "Rolex Tower, Sheikh Zayed Road, Dubai, United Arab Emirates",
+      addressAr: "برج رولكس، شارع الشيخ زايد، دبي، الإمارات العربية المتحدة",
+      shipping: "Jebel Ali Port and Al Maktoum International Airport",
+      shippingAr: "ميناء جبل علي ومطار آل مكتوم الدولي",
+      code: "ME"
+    },
+    {
+      region: "EUROPE",
+      regionSub: "ROTTERDAM, NETHERLANDS",
+      regionAr: "أوروبا — روتردام، هولندا",
+      officeType: "European Commercial & Logistics Hub",
+      officeTypeAr: "المركز التجاري واللوجستي الأوروبي",
+      address: "Wilhelminaplein, Rotterdam, Netherlands",
+      addressAr: "فيلهيلمينابلين، روتردام، هولندا",
+      shipping: "Port of Rotterdam and Amsterdam Airport Schiphol",
+      shippingAr: "ميناء روتردام ومطار سخيبول أمستردام",
+      code: "EU"
+    },
+    {
+      region: "AFRICA",
+      regionSub: "LAGOS, NIGERIA",
+      regionAr: "إفريقيا — لاغوس، نيجيريا",
+      officeType: "African Regional Coordination Hub",
+      officeTypeAr: "المركز الإقليمي للتنسيق التجاري",
+      address: "Victoria Island Commercial District, Lagos, Nigeria",
+      addressAr: "حي فيكتوريا آيلاند التجاري، لاغوس، نيجيريا",
+      shipping: "Port of Lagos (Apapa / Tin Can) and Murtala Muhammed International Airport",
+      shippingAr: "ميناء لاغوس (أبابا / تين كان) ومطار مورتالا محمد الدولي",
+      code: "AF"
+    },
+    {
+      region: "ASIA",
+      regionSub: "SINGAPORE",
+      regionAr: "آسيا — سنغافورة",
+      officeType: "Asian Trade & Logistics Hub",
+      officeTypeAr: "المركز التجاري واللوجستي الآسيوي",
+      address: "Marina Bay Business District, Singapore",
+      addressAr: "حي مارينا باي للأعمال، سنغافورة",
+      shipping: "Port of Singapore and Changi Airport",
+      shippingAr: "ميناء سنغافورة ومطار شانغي",
+      code: "AP"
+    },
+    {
+      region: "NORTH AMERICA",
+      regionSub: "MIAMI, USA",
+      regionAr: "أمريكا الشمالية — ميامي، الولايات المتحدة",
+      officeType: "North American Coordination Office",
+      officeTypeAr: "مكتب التنسيق التجاري لأمريكا الشمالية",
+      address: "Brickell Business District, Miami, Florida, USA",
+      addressAr: "حي بريكل التجاري، ميامي، فلوريدا، الولايات المتحدة",
+      shipping: "PortMiami and Miami International Airport",
+      shippingAr: "بورت ميامي ومطار ميامي الدولي",
+      code: "NA"
+    },
+    {
+      region: "SOUTH AMERICA",
+      regionSub: "SÃO PAULO, BRAZIL",
+      regionAr: "أمريكا الجنوبية — ساو باولو، البرازيل",
+      officeType: "South American Coordination Office",
+      officeTypeAr: "مكتب التنسيق التجاري لأمريكا الجنوبية",
+      address: "Paulista Avenue Business District, São Paulo, Brazil",
+      addressAr: "حي جادة باوليستا التجاري، ساو باولو، البرازيل",
+      shipping: "Port of Santos and São Paulo–Guarulhos International Airport",
+      shippingAr: "ميناء سانتوس ومطار ساو باولو - غواروليوس الدولي",
+      code: "SA"
     }
-  };
+  ];
 
   return (
-    <div className={getContainerClassName()} dir={lang === "ar" ? "rtl" : "ltr"}>
+    <div className="min-h-screen antialiased flex flex-col bg-white text-slate-900 font-sans selection:bg-emerald-700 selection:text-white" dir={lang === "ar" ? "rtl" : "ltr"}>
+      {/* INITIAL PAGE LOAD & ROUTE TRANSITION OVERLAY */}
+      {(initialLoading || pageLoading) && (
+        <div
+          className={`fixed inset-0 z-[200] flex flex-col items-center justify-center p-6 transition-all duration-300 ${
+            pageLoading ? "bg-white/85 backdrop-blur-sm" : "bg-white"
+          }`}
+          role="status"
+          aria-live="polite"
+        >
+          <JaesLoadingIndicator
+            lang={lang}
+            label={
+              initialLoading
+                ? (lang === "en" ? "Global Procurement & Strategic Sourcing" : "المشتريات والتوريد الاستراتيجي")
+                : (lang === "en" ? "Loading Trade Corridor" : "جاري فتح ممر التجارة")
+            }
+            subtitle={
+              initialLoading
+                ? (lang === "en" ? "Dubai, UAE • Worldwide Operations" : "دبي، الإمارات العربية المتحدة • عمليات عالمية")
+                : undefined
+            }
+          />
+        </div>
+      )}
+
+      {/* FORM SUBMISSION / API DISPATCH LOADING OVERLAY */}
+      {(rfqLoading || contactLoading) && (
+        <div
+          className="fixed inset-0 z-[200] bg-white/90 backdrop-blur-md flex flex-col items-center justify-center p-6 animate-[fadeIn_0.2s_ease_out]"
+          role="status"
+          aria-live="polite"
+        >
+          <JaesLoadingIndicator
+            lang={lang}
+            label={
+              rfqLoading
+                ? (lang === "en" ? "Transmitting RFQ Specifications" : "جاري إرسال مواصفات طلب الشراء")
+                : (lang === "en" ? "Connecting Procurement Team" : "جاري الاتصال بفريق المشتريات")
+            }
+            subtitle={
+              rfqLoading
+                ? (lang === "en" ? "Encrypting parameters and connecting with Dubai sourcing desk..." : "تشفير البيانات والربط مع مكتب التوريد في دبي...")
+                : (lang === "en" ? "Securely relaying inquiry to Dubai headquarters..." : "إرسال الاستفسار بأمان إلى المقر الرئيسي في دبي...")
+            }
+          />
+        </div>
+      )}
+
       {/* GLOBAL BANNER CORRIDOR */}
       <div className="bg-slate-900 border-b border-emerald-950/20 text-[11px] md:text-xs text-slate-300 font-mono py-2 px-4 shadow-inner">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-1.5 md:gap-4">
@@ -435,44 +767,6 @@ export default function App() {
         )}
       </header>
 
-      {/* DISPLAY PATTERN CHOOSER PANEL */}
-      <div className="bg-emerald-950 text-white border-y border-emerald-900 font-sans py-3 px-4 shadow-md sticky top-[77px] z-40 transition-all">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-3">
-          <div className="flex items-center gap-2.5">
-            <span className="text-xl">🎨</span>
-            <div className="flex flex-col text-left">
-              <span className="font-bold text-xs tracking-wider text-emerald-300 uppercase">
-                {lang === "en" ? "Page Readability & Style Selector" : "مساعد القراءة وتنسيق الخطوط"}
-              </span>
-              <span className="text-[11px] text-slate-300">
-                {lang === "en" ? "Choose how comfortable you want this website to look" : "اضغط بالأسفل لاختيار حجم الخط ومظهر الصفحة الأكثر راحة لعينك"}
-              </span>
-            </div>
-          </div>
-          
-          <div className="flex flex-wrap items-center gap-2">
-            {[
-              { id: "bigText", labelEn: "🌟 Easy & Big Font", labelAr: "خط كبير ومقروء جداً", bg: "bg-amber-100 text-stone-950 border-amber-300" },
-              { id: "warm", labelEn: "🌿 Cozy Warm (Sepia)", labelAr: "نمط دافئ مريح للعين", bg: "bg-[#f5ebd6] text-stone-900 border-[#decba0]" },
-              { id: "classic", labelEn: "💼 Clean Executive", labelAr: "النمط الكلاسيكي الأصلي", bg: "bg-white text-slate-900 border-slate-300" }
-            ].map((ptn) => (
-              <button
-                key={ptn.id}
-                onClick={() => setDisplayPattern(ptn.id as "bigText" | "warm" | "classic")}
-                className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all border-2 flex items-center gap-1.5 cursor-pointer hover:shadow-md ${
-                  displayPattern === ptn.id
-                    ? `${ptn.bg} ring-2 ring-emerald-400 scale-105 border-transparent`
-                    : "bg-emerald-900 text-emerald-200 border-emerald-800 hover:text-white"
-                }`}
-              >
-                <span>{lang === "en" ? ptn.labelEn : ptn.labelAr}</span>
-                {displayPattern === ptn.id && <span className="text-[10px] text-emerald-700 font-extrabold">✔</span>}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
       {/* DYNAMIC VIEW ROUTER */}
       <main className="flex-1">
 
@@ -587,7 +881,10 @@ export default function App() {
             </section>
 
             {/* TRUST STATISTICS SECTION */}
-            <section className="bg-slate-900 text-white py-16 border-t font-sans border-slate-800 relative overflow-hidden text-center sm:text-start">
+            <section
+              ref={statsSectionRef}
+              className="bg-slate-900 text-white py-16 border-t font-sans border-slate-800 relative overflow-hidden text-center sm:text-start"
+            >
               {/* Abs-decor lines */}
               <div className="absolute inset-0 bg-gradient-to-b from-slate-900 to-slate-950" />
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -600,32 +897,110 @@ export default function App() {
                   </h2>
                 </div>
 
-                <div className="grid grid-cols-2 lg:grid-cols-5 gap-6 text-center divide-y lg:divide-y-0 lg:divide-x divide-slate-800/80">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 text-center divide-y lg:divide-y-0 lg:divide-x divide-slate-800/80">
                   <div className="pt-6 lg:pt-0">
-                    <span className="block text-3xl sm:text-4xl font-extrabold text-white font-mono tracking-tighter">UAE</span>
-                    <span className="block text-xs text-emerald-400 font-bold uppercase mt-1.5">{t("statHQ")}</span>
-                    <span className="block text-[10px] text-slate-400">{t("statHQDesc")}</span>
-                  </div>
-                  <div className="pt-6 lg:pt-0 lg:pl-4">
                     <span className="block text-3xl sm:text-4xl font-extrabold text-white font-mono tracking-tighter">GLOBAL</span>
                     <span className="block text-xs text-emerald-400 font-bold uppercase mt-1.5">{t("statGlobalOps")}</span>
-                    <span className="block text-[10px] text-slate-400">{t("statGlobalDesc")}</span>
+                    <span className="block text-[10px] text-slate-400">
+                      {lang === "en" ? `Serving ${animatedStats.countries}+ countries` : `نخدم أكثر من ${animatedStats.countries}+ بلداً`}
+                    </span>
                   </div>
                   <div className="pt-6 lg:pt-0 lg:pl-4">
-                    <span className="block text-3xl sm:text-4xl font-extrabold text-white font-mono tracking-tighter">1,200+</span>
-                    <span className="block text-xs text-emerald-400 font-bold uppercase mt-1.5">Verified Suppliers</span>
+                    <span className="block text-3xl sm:text-4xl font-extrabold text-white font-mono tracking-tighter">
+                      {animatedStats.suppliers.toLocaleString()}+
+                    </span>
+                    <span className="block text-xs text-emerald-400 font-bold uppercase mt-1.5">
+                      {lang === "en" ? "Verified Suppliers" : "موردون معتمدون"}
+                    </span>
                     <span className="block text-[10px] text-slate-400">{t("statSuppliersDesc")}</span>
                   </div>
                   <div className="pt-6 lg:pt-0 lg:pl-4">
-                    <span className="block text-3xl sm:text-4xl font-extrabold text-white font-mono tracking-tighter">980+</span>
-                    <span className="block text-xs text-emerald-400 font-bold uppercase mt-1.5">Completed Contracts</span>
+                    <span className="block text-3xl sm:text-4xl font-extrabold text-white font-mono tracking-tighter">
+                      {animatedStats.contracts.toLocaleString()}+
+                    </span>
+                    <span className="block text-xs text-emerald-400 font-bold uppercase mt-1.5">
+                      {lang === "en" ? "Completed Contracts" : "عقود منجزة"}
+                    </span>
                     <span className="block text-[10px] text-slate-400">{t("statProjectsDesc")}</span>
                   </div>
-                  <div className="pt-6 lg:pt-0 lg:pl-4 col-span-2 lg:col-span-1">
-                    <span className="block text-3xl sm:text-4xl font-extrabold text-white font-mono tracking-tighter">6 Cont.</span>
+                  <div className="pt-6 lg:pt-0 lg:pl-4">
+                    <span className="block text-3xl sm:text-4xl font-extrabold text-white font-mono tracking-tighter">
+                      {animatedStats.continents} Cont.
+                    </span>
                     <span className="block text-xs text-emerald-400 font-bold uppercase mt-1.5">{t("statCoverage")}</span>
                     <span className="block text-[10px] text-slate-400">{t("statCoverageDesc")}</span>
                   </div>
+                </div>
+              </div>
+            </section>
+
+            {/* GLOBAL TRADING NETWORK SECTION */}
+            <section className="bg-slate-50/70 py-14 lg:py-20 border-b border-slate-200">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="text-center max-w-3xl mx-auto space-y-3 mb-12">
+                  <div className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200/80 text-emerald-800 px-3.5 py-1 rounded-full text-xs font-mono font-bold tracking-wider uppercase">
+                    <span className="w-2 h-2 rounded-full bg-emerald-600 inline-block" />
+                    {translations.globalTradingNetworkBadge?.[lang] || "INTERNATIONAL PRESENCE"}
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight font-sans">
+                    {translations.globalTradingNetworkTitle?.[lang] || "Global Trading Network"}
+                  </h2>
+                  <div className="text-xs sm:text-sm font-mono font-bold text-emerald-800 tracking-wider">
+                    {translations.globalTradingNetworkSub?.[lang] || "MIDDLE EAST  •  EUROPE  •  AFRICA  •  ASIA  •  NORTH AMERICA  •  SOUTH AMERICA"}
+                  </div>
+                  <p className="text-sm sm:text-base text-slate-600 font-serif max-w-2xl mx-auto leading-relaxed pt-1">
+                    {translations.globalTradingNetworkDesc?.[lang]}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {tradingLocations.map((loc, idx) => (
+                    <div
+                      key={idx}
+                      className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm hover:shadow-md hover:border-emerald-600/40 transition-all duration-300 flex flex-col justify-between group relative"
+                    >
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                          <div className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                            <span className="text-xs font-mono font-extrabold text-slate-900 tracking-wider">
+                              {lang === "en" ? loc.region : loc.regionAr}
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-mono text-emerald-800 bg-emerald-50 border border-emerald-100 font-bold px-2 py-0.5 rounded">
+                            {loc.code}
+                          </span>
+                        </div>
+
+                        <div>
+                          <div className="flex items-start gap-2">
+                            <MapPin size={18} className="text-emerald-700 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <h3 className="text-base sm:text-lg font-bold text-slate-900 font-sans tracking-tight leading-snug">
+                                {lang === "en" ? `${loc.city}, ${loc.country}` : loc.cityCountryAr}
+                              </h3>
+                              <p className="text-xs font-mono font-semibold text-emerald-800 mt-1">
+                                {lang === "en" ? loc.hubType : loc.hubTypeAr}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <p className="text-xs sm:text-[13px] text-slate-600 font-serif leading-relaxed pl-6">
+                          {lang === "en" ? loc.description : loc.descriptionAr}
+                        </p>
+                      </div>
+
+                      <div className="mt-5 pt-3.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono text-slate-500 pl-6">
+                        <span className="text-slate-600 font-medium">
+                          {lang === "en" ? loc.highlight : loc.highlightAr}
+                        </span>
+                        <span className="text-emerald-700 font-bold uppercase tracking-wider text-[10px]">
+                          {lang === "en" ? "Commercial Hub" : "مركز تجاري"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </section>
@@ -1092,131 +1467,201 @@ export default function App() {
           </section>
         )}
 
-        {/* PAGE: SUPPLIER NETWORK IN-DEPTH (NOW CORPORATE MEETINGS) */}
+        {/* PAGE: SUPPLIER NETWORK IN-DEPTH */}
         {activePage === "network" && (
           <section className="bg-white py-12 lg:py-20">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
               
-              <div className="text-center space-y-4">
-                <span className="text-xs font-mono font-bold tracking-[0.25em] text-emerald-700 uppercase bg-emerald-50 py-1.5 px-3 rounded inline-block">
-                  {lang === "en" ? "Direct Corporate Dialogue" : "اجتماعات شفافة ومفتوحة"}
-                </span>
+              <div className="text-center space-y-3">
+                <div className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200/80 text-emerald-800 px-3.5 py-1 rounded-full text-xs font-mono font-bold tracking-wider uppercase">
+                  <span className="w-2 h-2 rounded-full bg-emerald-600 inline-block" />
+                  {translations.globalTradingNetworkBadge?.[lang] || "INTERNATIONAL PRESENCE"}
+                </div>
                 <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight font-sans">
-                  {t("networkTitle")}
+                  {translations.globalTradingNetworkTitle?.[lang] || "Global Trading Network"}
                 </h1>
-                <p className="text-base text-slate-600 max-w-2xl mx-auto font-serif">
-                  {t("networkSub")}
+                <div className="text-xs sm:text-sm font-mono font-bold text-emerald-800 tracking-wider">
+                  {translations.globalTradingNetworkSub?.[lang] || "MIDDLE EAST  •  EUROPE  •  AFRICA  •  ASIA  •  NORTH AMERICA  •  SOUTH AMERICA"}
+                </div>
+                <p className="text-base text-slate-600 max-w-2xl mx-auto font-serif leading-relaxed pt-1">
+                  {translations.globalTradingNetworkDesc?.[lang]}
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-                {/* Main Sourcing Pillars Panel */}
-                <div className="lg:col-span-7 bg-slate-50 rounded-xl p-8 border border-slate-200 space-y-6 flex flex-col justify-center">
-                  <div>
-                    <h2 className="text-xl font-bold text-slate-900 font-sans tracking-tight">
-                      {lang === "en" ? "Our 4 Pillars of Secure Delivery" : "ركائزنا الأربعة لتوصيل آمن"}
-                    </h2>
-                    <p className="text-slate-600 text-xs font-serif mt-1">
-                      {lang === "en" ? "Direct relationships built on trust, verification, and clear processes." : "علاقات مباشرة مبنية على الثقة المتبادلة والتحقق المستمر لراحتكم."}
-                    </p>
-                  </div>
+              {/* 6 Regional Commercial Hubs */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {tradingLocations.map((loc, idx) => (
+                  <div
+                    key={idx}
+                    className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm hover:shadow-md hover:border-emerald-600/40 transition-all duration-300 flex flex-col justify-between group relative"
+                  >
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                        <div className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                          <span className="text-xs font-mono font-extrabold text-slate-900 tracking-wider">
+                            {lang === "en" ? loc.region : loc.regionAr}
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-mono text-emerald-800 bg-emerald-50 border border-emerald-100 font-bold px-2 py-0.5 rounded">
+                          {loc.code}
+                        </span>
+                      </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="bg-white p-4 rounded border border-slate-200 space-y-1">
-                      <span className="text-xl">🌍</span>
-                      <h4 className="font-bold text-slate-900 text-xs font-sans">
-                        {lang === "en" ? "1. Trusted Global Network" : "١. شبكة عالمية موثوقة"}
-                      </h4>
-                      <p className="text-slate-500 text-[11px] font-serif leading-relaxed">
-                        {lang === "en" ? "We verify factories directly, ensuring certified workflows." : "نفحص المصانع بأنفسنا، ونتأكد من دقة خطوط الإنتاج وجودة المنتجات."}
+                      <div>
+                        <div className="flex items-start gap-2">
+                          <MapPin size={18} className="text-emerald-700 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <h3 className="text-base sm:text-lg font-bold text-slate-900 font-sans tracking-tight leading-snug">
+                              {lang === "en" ? `${loc.city}, ${loc.country}` : loc.cityCountryAr}
+                            </h3>
+                            <p className="text-xs font-mono font-semibold text-emerald-800 mt-1">
+                              {lang === "en" ? loc.hubType : loc.hubTypeAr}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <p className="text-xs sm:text-[13px] text-slate-600 font-serif leading-relaxed pl-6">
+                        {lang === "en" ? loc.description : loc.descriptionAr}
                       </p>
                     </div>
 
-                    <div className="bg-white p-4 rounded border border-slate-200 space-y-1">
-                      <span className="text-xl">📜</span>
-                      <h4 className="font-bold text-slate-900 text-xs font-sans">
-                        {lang === "en" ? "2. Transparent Legal Escrow" : "٢. شفافية قانونية تامة"}
-                      </h4>
-                      <p className="text-slate-500 text-[11px] font-serif leading-relaxed">
-                        {lang === "en" ? "All billing, taxes, customs codes, and licenses are handled cleanly." : "جميع الفواتير والضرائب وأكواد الجمارك والتراخيص تُعالج بكل وضوح."}
-                      </p>
-                    </div>
-
-                    <div className="bg-white p-4 rounded border border-slate-200 space-y-1">
-                      <span className="text-xl">🚢</span>
-                      <h4 className="font-bold text-slate-900 text-xs font-sans">
-                        {lang === "en" ? "3. Seamless Port Logistics" : "٣. لوجستيات شحن ميسرة"}
-                      </h4>
-                      <p className="text-slate-500 text-[11px] font-serif leading-relaxed">
-                        {lang === "en" ? "From bulk cargo to priority containers, shipping lines are protected." : "شحنتك مؤمنة تماماً سواء كانت بحجم حاوية واحدة أو سفينة شحن ضخمة."}
-                      </p>
-                    </div>
-
-                    <div className="bg-white p-4 rounded border border-slate-200 space-y-1">
-                      <span className="text-xl">🤝</span>
-                      <h4 className="font-bold text-slate-900 text-xs font-sans">
-                        {lang === "en" ? "4. Zero-Friction Handover" : "٤. تسليم مباشر بيديك"}
-                      </h4>
-                      <p className="text-slate-500 text-[11px] font-serif leading-relaxed">
-                        {lang === "en" ? "We accompany the cargo all the way until physically cleared." : "نرافق البضاعة حتى يتم فحصها وتفريغها بسلام داخل مستودعك الخاص."}
-                      </p>
+                    <div className="mt-5 pt-3.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono text-slate-500 pl-6">
+                      <span className="text-slate-600 font-medium">
+                        {lang === "en" ? loc.highlight : loc.highlightAr}
+                      </span>
+                      <span className="text-emerald-700 font-bold uppercase tracking-wider text-[10px]">
+                        {lang === "en" ? "Commercial Hub" : "مركز تجاري"}
+                      </span>
                     </div>
                   </div>
+                ))}
+              </div>
+
+              {/* Pillars & Direct Dialogue Section */}
+              <div className="border-t border-slate-200 pt-12">
+                <div className="text-center space-y-2 mb-10">
+                  <span className="text-xs font-mono font-bold tracking-[0.25em] text-emerald-700 uppercase bg-emerald-50 py-1.5 px-3 rounded inline-block">
+                    {lang === "en" ? "Direct Corporate Dialogue" : "اجتماعات شفافة ومفتوحة"}
+                  </span>
+                  <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-sans">
+                    {t("networkTitle")}
+                  </h2>
+                  <p className="text-sm text-slate-600 max-w-2xl mx-auto font-serif">
+                    {t("networkSub")}
+                  </p>
                 </div>
 
-                {/* Plain, simple descriptions of our meetings and plans */}
-                <div className="lg:col-span-5 bg-slate-50 border border-slate-200 rounded-xl p-6 lg:p-8 flex flex-col justify-between space-y-6">
-                  <div className="space-y-4">
-                    <h3 className="text-xl font-bold font-sans text-slate-900 flex items-center gap-2">
-                      <Users className="text-emerald-700" size={22} />
-                      {lang === "en" ? "How we inspect factories together" : "كيف نأخذ بيد شحنتك خطوة بخطوة"}
-                    </h3>
-                    <p className="text-sm text-slate-600 font-serif leading-relaxed">
-                      {t("networkDesc")}
-                    </p>
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+                  {/* Main Sourcing Pillars Panel */}
+                  <div className="lg:col-span-7 bg-slate-50 rounded-xl p-8 border border-slate-200 space-y-6 flex flex-col justify-center">
+                    <div>
+                      <h3 className="text-xl font-bold text-slate-900 font-sans tracking-tight">
+                        {lang === "en" ? "Our 4 Pillars of Secure Delivery" : "ركائزنا الأربعة لتوصيل آمن"}
+                      </h3>
+                      <p className="text-slate-600 text-xs font-serif mt-1">
+                        {lang === "en" ? "Direct relationships built on trust, verification, and clear processes." : "علاقات مباشرة مبنية على الثقة المتبادلة والتحقق المستمر لراحتكم."}
+                      </p>
+                    </div>
 
-                    <div className="border-t border-slate-200 pt-4 space-y-3 font-sans">
-                      <div className="flex items-start gap-2.5">
-                        <CheckCircle2 size={18} className="text-emerald-700 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <span className="text-xs font-bold text-slate-800 block">
-                            {lang === "en" ? "Personal Factory Visits" : "زيارات شخصية ودية"}
-                          </span>
-                          <span className="text-xs text-slate-500 font-serif">
-                            {lang === "en" ? "We inspect factory floors ourselves, testing materials and checking machine calibrations." : "نحن نسافر ونقف على مكابس المصانع ونفحص الخامات للتأكد من أمانها تماماً."}
-                          </span>
-                        </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="bg-white p-4 rounded border border-slate-200 space-y-1">
+                        <span className="text-xl">🌍</span>
+                        <h4 className="font-bold text-slate-900 text-xs font-sans">
+                          {lang === "en" ? "1. Trusted Global Network" : "١. شبكة عالمية موثوقة"}
+                        </h4>
+                        <p className="text-slate-500 text-[11px] font-serif leading-relaxed">
+                          {lang === "en" ? "We verify factories directly, ensuring certified workflows." : "نفحص المصانع بأنفسنا، ونتأكد من دقة خطوط الإنتاج وجودة المنتجات."}
+                        </p>
                       </div>
 
-                      <div className="flex items-start gap-2.5">
-                        <CheckCircle2 size={18} className="text-emerald-700 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <span className="text-xs font-bold text-slate-800 block">
-                            {lang === "en" ? "Worry-Free Custom Paperwork" : "التخليص الجمركي دون وجع رأس"}
-                          </span>
-                          <span className="text-xs text-slate-500 font-serif">
-                            {lang === "en" ? "We handles all tax certificates, customs codes, and bills of lading. No hard steps for you." : "نتولى كافة الأوراق والضرائب والمستندات الحكومية لتصلك دون بذل أي مجهود."}
-                          </span>
-                        </div>
+                      <div className="bg-white p-4 rounded border border-slate-200 space-y-1">
+                        <span className="text-xl">📜</span>
+                        <h4 className="font-bold text-slate-900 text-xs font-sans">
+                          {lang === "en" ? "2. Transparent Legal Escrow" : "٢. شفافية قانونية تامة"}
+                        </h4>
+                        <p className="text-slate-500 text-[11px] font-serif leading-relaxed">
+                          {lang === "en" ? "All billing, taxes, customs codes, and licenses are handled cleanly." : "جميع الفواتير والضرائب وأكواد الجمارك والتراخيص تُعالج بكل وضوح."}
+                        </p>
                       </div>
 
-                      <div className="flex items-start gap-2.5">
-                        <CheckCircle2 size={18} className="text-emerald-700 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <span className="text-xs font-bold text-slate-800 block">
-                            {lang === "en" ? "Direct Home Delivery" : "توصيل حتى باب منزلك أو شركتك"}
-                          </span>
-                          <span className="text-xs text-slate-500 font-serif">
-                            {lang === "en" ? "We bring the cargo directly by ship or plane right to your preferred destination." : "خط شحن ممهد بالطائرات أو السفن لإحضار بضاعتك أينما كنت دون قلق."}
-                          </span>
-                        </div>
+                      <div className="bg-white p-4 rounded border border-slate-200 space-y-1">
+                        <span className="text-xl">🚢</span>
+                        <h4 className="font-bold text-slate-900 text-xs font-sans">
+                          {lang === "en" ? "3. Seamless Port Logistics" : "٣. لوجستيات شحن ميسرة"}
+                        </h4>
+                        <p className="text-slate-500 text-[11px] font-serif leading-relaxed">
+                          {lang === "en" ? "From bulk cargo to priority containers, shipping lines are protected." : "شحنتك مؤمنة تماماً سواء كانت بحجم حاوية واحدة أو سفينة شحن ضخمة."}
+                        </p>
+                      </div>
+
+                      <div className="bg-white p-4 rounded border border-slate-200 space-y-1">
+                        <span className="text-xl">🤝</span>
+                        <h4 className="font-bold text-slate-900 text-xs font-sans">
+                          {lang === "en" ? "4. Zero-Friction Handover" : "٤. تسليم مباشر بيديك"}
+                        </h4>
+                        <p className="text-slate-500 text-[11px] font-serif leading-relaxed">
+                          {lang === "en" ? "We accompany the cargo all the way until physically cleared." : "نرافق البضاعة حتى يتم فحصها وتفريغها بسلام داخل مستودعك الخاص."}
+                        </p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="bg-emerald-50 border border-emerald-200 rounded p-4 text-xs font-mono text-emerald-900 inline-flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse inline-block" />
-                    <span>{lang === "en" ? "OUR BOARD ROOM IS COMPLIANT AND OPEN TO ENQUIRIES" : "غرفة اجتماعاتنا مفتوحة وجاهزة دائماً لمساعدتك"}</span>
+                  {/* Plain, simple descriptions of our meetings and plans */}
+                  <div className="lg:col-span-5 bg-slate-50 border border-slate-200 rounded-xl p-6 lg:p-8 flex flex-col justify-between space-y-6">
+                    <div className="space-y-4">
+                      <h3 className="text-xl font-bold font-sans text-slate-900 flex items-center gap-2">
+                        <Users className="text-emerald-700" size={22} />
+                        {lang === "en" ? "How we inspect factories together" : "كيف نأخذ بيد شحنتك خطوة بخطوة"}
+                      </h3>
+                      <p className="text-sm text-slate-600 font-serif leading-relaxed">
+                        {t("networkDesc")}
+                      </p>
+
+                      <div className="border-t border-slate-200 pt-4 space-y-3 font-sans">
+                        <div className="flex items-start gap-2.5">
+                          <CheckCircle2 size={18} className="text-emerald-700 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <span className="text-xs font-bold text-slate-800 block">
+                              {lang === "en" ? "Personal Factory Visits" : "زيارات شخصية ودية"}
+                            </span>
+                            <span className="text-xs text-slate-500 font-serif">
+                              {lang === "en" ? "We inspect factory floors ourselves, testing materials and checking machine calibrations." : "نحن نسافر ونقف على مكابس المصانع ونفحص الخامات للتأكد من أمانها تماماً."}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-2.5">
+                          <CheckCircle2 size={18} className="text-emerald-700 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <span className="text-xs font-bold text-slate-800 block">
+                              {lang === "en" ? "Worry-Free Custom Paperwork" : "التخليص الجمركي دون وجع رأس"}
+                            </span>
+                            <span className="text-xs text-slate-500 font-serif">
+                              {lang === "en" ? "We handles all tax certificates, customs codes, and bills of lading. No hard steps for you." : "نتولى كافة الأوراق والضرائب والمستندات الحكومية لتصلك دون بذل أي مجهود."}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-2.5">
+                          <CheckCircle2 size={18} className="text-emerald-700 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <span className="text-xs font-bold text-slate-800 block">
+                              {lang === "en" ? "Direct Home Delivery" : "توصيل حتى باب منزلك أو شركتك"}
+                            </span>
+                            <span className="text-xs text-slate-500 font-serif">
+                              {lang === "en" ? "We bring the cargo directly by ship or plane right to your preferred destination." : "خط شحن ممهد بالطائرات أو السفن لإحضار بضاعتك أينما كنت دون قلق."}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-emerald-50 border border-emerald-200 rounded p-4 text-xs font-mono text-emerald-900 inline-flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse inline-block" />
+                      <span>{lang === "en" ? "OUR BOARD ROOM IS COMPLIANT AND OPEN TO ENQUIRIES" : "غرفة اجتماعاتنا مفتوحة وجاهزة دائماً لمساعدتك"}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1243,25 +1688,96 @@ export default function App() {
 
               {/* SUCCESS POPUP IF SUBMITTED */}
               {rfqSuccess ? (
-                <div className="bg-white border-2 border-emerald-500 rounded-xl p-8 space-y-5 text-center shadow-lg animate-[fadeIn_0.5s_ease_out]">
-                  <div className="w-16 h-16 bg-emerald-50 text-emerald-700 rounded-full flex items-center justify-center mx-auto mb-2 border border-emerald-100">
+                <div className="bg-white border-2 border-emerald-500 rounded-xl p-8 space-y-6 text-center shadow-lg animate-[fadeIn_0.5s_ease_out]">
+                  <div className="w-16 h-16 bg-emerald-50 text-emerald-700 rounded-full flex items-center justify-center mx-auto border border-emerald-100">
                     <CheckCircle2 size={36} />
                   </div>
-                  <h3 className="text-xl font-bold font-sans text-slate-900">
-                    {t("successTitle")}
-                  </h3>
-                  <p className="text-sm text-slate-600 font-serif leading-relaxed max-w-md mx-auto">
-                    {t("rfqSuccessDesc")}
-                  </p>
-                  <div className="bg-slate-50 border border-slate-200 py-3.5 px-6 rounded inline-block font-mono text-xs text-slate-700">
+                  <div className="space-y-1">
+                    <h3 className="text-xl font-bold font-sans text-slate-900">
+                      {t("successTitle")}
+                    </h3>
+                    <p className="text-sm text-slate-600 font-serif leading-relaxed max-w-md mx-auto">
+                      {t("rfqSuccessDesc")}
+                    </p>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-200 py-3 px-5 rounded inline-block font-mono text-xs text-slate-700">
                     🔒 Security Trace ID: <span className="font-bold text-emerald-800">{rfqRefId}</span>
                   </div>
-                  <div className="text-[10px] text-slate-400 font-mono">
-                    A copy of your specification dataset has been securely routed via SMTP to both office domains.
-                  </div>
+
+                  {/* Real-time SMTP Status and Setup Guide */}
+                  {smtpStatus.isSMTPConfigured ? (
+                    smtpStatus.isSMTPReady ? (
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-5 text-left max-w-md mx-auto space-y-1.5 shadow-sm">
+                        <div className="font-bold text-emerald-950 text-xs font-mono flex items-center gap-1.5">
+                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse" />
+                          📡 SMTP DISPATCH SUCCESSFUL
+                        </div>
+                        <p className="text-[12px] text-emerald-800 font-serif leading-relaxed">
+                          Your purchase request has been officially wrapped, parsed, and forwarded via SMTP to external hubs. A copy has been delivered to your primary email address.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-5 text-left max-w-lg mx-auto space-y-2 shadow-sm">
+                        <div className="font-bold text-amber-950 text-xs font-mono flex items-center gap-1.5">
+                          <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+                          ⚠️ SMTP AUTHENTICATION FAILURE
+                        </div>
+                        <p className="text-[11px] text-amber-900 font-serif leading-relaxed">
+                          Your server tried to negotiate SMTP, but got rejected. Server error returned: <code className="bg-white px-1 py-0.5 border border-amber-200 rounded text-amber-950 font-mono text-[10px] break-all">{smtpStatus.smtpError}</code>.
+                        </p>
+                        <p className="text-[11px] text-amber-800 font-serif">
+                          Please verify your app password syntax (spaces don't matter, but there must be exactly 16 letters) and make sure your server host matches your SMTP port.
+                        </p>
+                      </div>
+                    )
+                  ) : (
+                    <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-5 sm:p-6 text-left max-w-xl mx-auto space-y-3.5 shadow-sm">
+                      <div className="font-bold text-amber-950 text-xs font-mono flex items-center gap-2">
+                        <span className="w-3 h-3 bg-amber-500 rounded-full animate-pulse flex-shrink-0" />
+                        ✉️ HOW TO RECEIVE ORDERS IN YOUR EMAIL INBOX:
+                      </div>
+                      <div className="text-[11px] sm:text-xs text-amber-900 font-sans space-y-2.5 leading-relaxed">
+                        <p className="font-serif">
+                          Since mail settings are simulated by default, you must configure a real SMTP provider (like Gmail) in your Secrets to bypass simulation and receive actual orders.
+                        </p>
+                        <div className="bg-white/80 border border-amber-100/60 rounded p-4 space-y-3">
+                          <p className="font-bold text-[11px] text-amber-950 uppercase font-mono">
+                            Step-By-Step Configuration Guide:
+                          </p>
+                          <ol className="list-decimal pl-4 space-y-2 font-serif text-[11px]">
+                            <li>
+                              Open the <strong>Secrets</strong> settings panel in the AI Studio editor interface (the gear icon on the top right, or Settings).
+                            </li>
+                            <li>
+                              Add these keys as secrets (define them exactly as written):
+                              <ul className="list-disc pl-4 mt-1.5 font-mono text-[10px] text-amber-950 space-y-1 bg-amber-50/50 p-2 rounded border border-amber-100">
+                                <li><strong>SMTP_HOST</strong>: <span className="bg-white px-1 border border-amber-200 rounded">smtp.gmail.com</span></li>
+                                <li><strong>SMTP_PORT</strong>: <span className="bg-white px-1 border border-amber-200 rounded">465</span></li>
+                                <li><strong>SMTP_SECURE</strong>: <span className="bg-white px-1 border border-amber-200 rounded">true</span></li>
+                                <li><strong>SMTP_USER</strong>: <span className="bg-white px-1 border border-amber-200 rounded font-semibold text-emerald-800">your-email@gmail.com</span></li>
+                                <li><strong>SMTP_PASS</strong>: <span className="bg-white px-1 border border-amber-250 rounded font-semibold text-rose-800">your 16-character google app password</span></li>
+                                <li><strong>RECIPIENT_EMAILS</strong>: <span className="bg-white px-1 border border-amber-200 rounded">boraldabendaj.agikons@gmail.com</span></li>
+                              </ul>
+                            </li>
+                            <li className="pt-1">
+                              <strong>How to get a Gmail App Password:</strong> Go to your Google Account Settings &rarr; Security &rarr; App Passwords. Generates a unique 16-letter code. Use this code for <strong>SMTP_PASS</strong> (do not use your regular account login password!).
+                            </li>
+                          </ol>
+                        </div>
+                        <p className="font-serif text-[11px] text-amber-800 italic">
+                          Once configured, re-submit a test RFQ and check your inbox instantly!
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   <button
-                    onClick={() => setRfqSuccess(false)}
-                    className="block w-full sm:w-auto mx-auto bg-slate-900 hover:bg-slate-800 text-white font-sans text-xs font-bold tracking-wide py-3 px-8 rounded cursor-pointer"
+                    onClick={() => {
+                      setRfqSuccess(false);
+                      setSmtpStatus({});
+                    }}
+                    className="block w-full sm:w-auto mx-auto bg-slate-900 hover:bg-slate-800 text-white font-sans text-xs font-bold tracking-wide py-3 px-8 rounded cursor-pointer transition-all"
                   >
                     {t("btnDismiss")}
                   </button>
@@ -1433,9 +1949,18 @@ export default function App() {
                   <button
                     type="submit"
                     disabled={rfqLoading}
-                    className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm tracking-wide py-4 px-6 rounded shadow cursor-pointer transition-colors"
+                    className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm tracking-wide py-4 px-6 rounded shadow cursor-pointer transition-colors flex items-center justify-center gap-3"
                   >
-                    {rfqLoading ? "DISPATCHING ENCRYPTED FILE DATASTREAM..." : t("btnSubmitRFQForm")}
+                    {rfqLoading ? (
+                      <>
+                        <div className="animate-jaes-loader">
+                          <JaesLogoBadge size="sm" />
+                        </div>
+                        <span>{lang === "en" ? "DISPATCHING ENCRYPTED FILE DATASTREAM..." : "جاري إرسال البيانات المشفرة..."}</span>
+                      </>
+                    ) : (
+                      t("btnSubmitRFQForm")
+                    )}
                   </button>
                 </form>
               )}
@@ -1464,22 +1989,74 @@ export default function App() {
                 {/* Form column */}
                 <div className="lg:col-span-7">
                   {contactSuccess ? (
-                    <div className="bg-slate-50 border-2 border-emerald-500 rounded-xl p-8 space-y-5 text-center shadow-md animate-[fadeIn_0.5s_ease_out]">
+                    <div className="bg-slate-50 border-2 border-emerald-500 rounded-xl p-8 space-y-6 text-center shadow-md animate-[fadeIn_0.5s_ease_out]">
                       <div className="w-14 h-14 bg-emerald-50 text-emerald-700 rounded-full flex items-center justify-center mx-auto border border-emerald-100">
                         <CheckCircle2 size={30} />
                       </div>
-                      <h3 className="text-lg font-bold font-sans text-slate-900">
-                        {t("successTitle")}
-                      </h3>
-                      <p className="text-xs text-slate-600 font-serif leading-relaxed">
-                        {t("contactSuccessDesc")}
-                      </p>
+                      <div className="space-y-1">
+                        <h3 className="text-lg font-bold font-sans text-slate-900">
+                          {t("successTitle")}
+                        </h3>
+                        <p className="text-xs text-slate-600 font-serif leading-relaxed">
+                          {t("contactSuccessDesc")}
+                        </p>
+                      </div>
+
                       <div className="bg-white border border-slate-300 py-2.5 px-5 rounded inline-block font-mono text-xs text-slate-700">
                         Inquiry ref: <span className="font-bold text-emerald-800">{contactRefId}</span>
                       </div>
+
+                      {/* Dynamic SMTP Warning/Success Banner */}
+                      {smtpStatus.isSMTPConfigured ? (
+                        smtpStatus.isSMTPReady ? (
+                          <div className="bg-emerald-50 border border-emerald-250 rounded-lg p-4 text-left max-w-md mx-auto space-y-1">
+                            <div className="font-bold text-emerald-950 text-[10px] font-mono flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
+                              📡 MAIL RELAY SUCCESS
+                            </div>
+                            <p className="text-[11px] text-emerald-800 font-serif">
+                              Your message was successfully transmitted over real-time SMTP and delivered to your designated mailbox folder.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="bg-amber-50 border border-amber-250 rounded-lg p-4 text-left max-w-md mx-auto space-y-1.5 animate-[fadeIn_0.3s_ease]">
+                            <div className="font-bold text-amber-950 text-[10px] font-mono flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                              ⚠️ EMAIL RELAY FAILURE
+                            </div>
+                            <p className="text-[11px] text-amber-900 font-serif leading-relaxed">
+                              We could not negotiate your custom mail transfer server. Returned error: <code className="bg-white px-1 py-0.5 border border-amber-200 rounded text-amber-950 font-mono text-[9px] break-all">{smtpStatus.smtpError}</code>.
+                            </p>
+                          </div>
+                        )
+                      ) : (
+                        <div className="bg-amber-50/70 border border-amber-200 rounded-lg p-5 text-left max-w-md mx-auto space-y-2">
+                          <div className="font-bold text-amber-955 text-[10px] font-mono flex items-center gap-1.5">
+                            <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse flex-shrink-0" />
+                            ✉️ HOW TO RECEIVE THIS MESSAGE IN YOUR EMAIL:
+                          </div>
+                          <div className="text-[10px] sm:text-[11px] text-amber-900 font-sans space-y-2 leading-relaxed">
+                            <p className="font-serif leading-relaxed">
+                              Your form submission is saved in application server logs. To receive instant notifications directly at <strong>{lang === "en" ? "your address" : "بريدك الإلكتروني"}</strong>, configure real SMTP credentials inside your AI Studio <strong>Secrets / Settings</strong> panel:
+                            </p>
+                            <ul className="list-disc pl-4 font-mono text-[9px] text-amber-950 space-y-1 bg-white/60 p-2 rounded border border-amber-100">
+                              <li><strong>SMTP_HOST</strong>: smtp.gmail.com</li>
+                              <li><strong>SMTP_PORT</strong>: 465</li>
+                              <li><strong>SMTP_SECURE</strong>: true</li>
+                              <li><strong>SMTP_USER</strong>: your-email@gmail.com</li>
+                              <li><strong>SMTP_PASS</strong>: google 16-letter app-password</li>
+                              <li><strong>RECIPIENT_EMAILS</strong>: boraldabendaj.agikons@gmail.com</li>
+                            </ul>
+                          </div>
+                        </div>
+                      )}
+
                       <button
-                        onClick={() => setContactSuccess(false)}
-                        className="block w-full sm:w-auto mx-auto bg-slate-950 hover:bg-slate-800 text-white font-sans text-xs font-bold tracking-wide py-2.5 px-6 rounded"
+                        onClick={() => {
+                          setContactSuccess(false);
+                          setSmtpStatus({});
+                        }}
+                        className="block w-full sm:w-auto mx-auto bg-slate-950 hover:bg-slate-800 text-white font-sans text-xs font-bold tracking-wide py-2.5 px-6 rounded transition-all"
                       >
                         {t("btnDismiss")}
                       </button>
@@ -1582,69 +2159,129 @@ export default function App() {
                       <button
                         type="submit"
                         disabled={contactLoading}
-                        className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm tracking-wide py-4 px-6 rounded cursor-pointer"
+                        className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm tracking-wide py-4 px-6 rounded cursor-pointer transition-colors flex items-center justify-center gap-3"
                       >
-                        {contactLoading ? "PREPARING DISPATCH STACK..." : t("btnSubmitContact")}
+                        {contactLoading ? (
+                          <>
+                            <div className="animate-jaes-loader">
+                              <JaesLogoBadge size="sm" />
+                            </div>
+                            <span>{lang === "en" ? "PREPARING DISPATCH STACK..." : "جاري تجهيز الاتصال..."}</span>
+                          </>
+                        ) : (
+                          t("btnSubmitContact")
+                        )}
                       </button>
                     </form>
                   )}
                 </div>
 
-                {/* Corporate Address & coordinates column */}
+                {/* Corporate Direct Contact & Network Clearance */}
                 <div className="lg:col-span-5 bg-slate-50 rounded-xl p-8 border border-slate-200 divide-y divide-slate-200/80 space-y-6">
                   
-                  {/* Executive Emails */}
+                  {/* Executive Direct Email */}
                   <div className="pb-6 space-y-3">
                     <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-800">
                       <Mail size={16} className="text-emerald-700" />
                       {t("contactEmailUs")}
                     </span>
-                    <div className="space-y-1.5 font-mono text-sm break-all font-semibold">
-                      <a href="mailto:boraldabendaj.agikons@gmail.com" className="block text-emerald-800 hover:underline">
+                    <div className="font-mono text-sm sm:text-base break-all font-bold">
+                      <a href="mailto:boraldabendaj.agikons@gmail.com" className="block text-emerald-800 hover:text-emerald-900 hover:underline">
                         boraldabendaj.agikons@gmail.com
                       </a>
-                      <a href="mailto:cysmedlcal.9@gmail.com" className="block text-emerald-800 hover:underline">
-                        cysmedlcal.9@gmail.com
-                      </a>
                     </div>
+                    <p className="text-xs text-slate-500 font-serif leading-relaxed">
+                      {lang === "en"
+                        ? "Direct inquiries dispatched to our active procurement team. Priority SLA responses within 12 business hours."
+                        : "استفسارات مباشرة إلى فريق المشتريات لدينا. الرد بأولوية خلال ١٢ ساعة عمل."}
+                    </p>
                   </div>
 
-                  {/* Office HQ Location */}
+                  {/* Submit Order Request quick action */}
                   <div className="py-6 space-y-3">
                     <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-800">
-                      <MapPin size={16} className="text-emerald-700" />
-                      {t("contactHQLocation")}
+                      <FileSpreadsheet size={16} className="text-emerald-700" />
+                      {lang === "en" ? "Looking to Order Products?" : "هل ترغب في طلب منتجات ومواد؟"}
                     </span>
-                    <p className="text-sm text-slate-600 font-serif leading-relaxed">
-                      {t("contactHQDetail")}
+                    <p className="text-xs text-slate-600 font-serif leading-relaxed">
+                      {lang === "en"
+                        ? "If you have detailed bill of quantities, specifications, or tender requirements, use our direct intake form."
+                        : "إذا كان لديك جداول كميات أو مواصفات فنية أو متطلبات مناقصات، يرجى تقديم طلب الشراء مباشرة."}
                     </p>
+                    <button
+                      type="button"
+                      onClick={() => navigateTo("rfq")}
+                      className="inline-flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white font-sans text-xs font-bold py-2.5 px-4 rounded shadow-sm transition-all cursor-pointer"
+                    >
+                      <span>{t("btnSubmitRFQ")}</span>
+                      <ArrowRight size={14} />
+                    </button>
                   </div>
 
-                  {/* Transshipment node */}
-                  <div className="pt-6 space-y-3">
-                    <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-800">
-                      <Truck size={16} className="text-emerald-700" />
-                      {t("contactCoverageZones")}
-                    </span>
-                    <p className="text-xs text-slate-500 font-serif leading-relaxed">
-                      {t("contactCoverageDetail")}
-                    </p>
-                  </div>
-
-                  {/* UAE flag badge */}
+                  {/* License / Global Network Badge */}
                   <div className="pt-6 text-center">
-                    <div className="inline-flex items-center gap-2 bg-white border border-slate-200 p-2 rounded-lg text-xs font-mono">
-                      <div className="flex gap-1">
-                        <span className="w-2.5 h-4 bg-red-600 block" />
-                        <div className="flex flex-col gap-0.5">
-                          <span className="w-5 h-1 bg-emerald-600 block" />
-                          <span className="w-5 h-1 bg-white block" />
-                          <span className="w-5 h-1 bg-black block" />
-                        </div>
-                      </div>
-                      <span className="font-bold text-slate-700">DUBAI, DET COMMERCIAL LICENSE</span>
+                    <div className="inline-flex items-center gap-2.5 bg-white border border-slate-200 px-3.5 py-2.5 rounded-lg text-xs font-mono shadow-sm">
+                      <Globe size={16} className="text-emerald-700 flex-shrink-0" />
+                      <span className="font-bold text-slate-800 tracking-wider">GLOBAL COMMERCIAL & PROCUREMENT NETWORK</span>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* GLOBAL OFFICE & COORDINATION LOCATIONS */}
+              <div className="pt-10 border-t border-slate-200 space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <span className="text-xs font-mono font-bold tracking-[0.2em] text-emerald-700 uppercase bg-emerald-50 py-1 px-3 rounded inline-block">
+                      {lang === "en" ? "Global Operations" : "العمليات الدولية"}
+                    </span>
+                    <h2 className="text-2xl sm:text-3xl font-extrabold font-sans text-slate-900 tracking-tight mt-1.5">
+                      {lang === "en" ? "Global Office & Coordination Locations" : "مواقع المكاتب والتنسيق الإقليمي العالمي"}
+                    </h2>
+                  </div>
+                  <div className="text-xs font-mono font-bold text-emerald-800">
+                    MIDDLE EAST  •  EUROPE  •  AFRICA  •  ASIA  •  NORTH AMERICA  •  SOUTH AMERICA
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {coordinationLocations.map((loc, idx) => (
+                    <div
+                      key={idx}
+                      className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm hover:shadow-md hover:border-emerald-600/40 transition-all flex flex-col justify-between group relative"
+                    >
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
+                          <span className="text-[11px] font-mono font-extrabold text-slate-900 tracking-wider">
+                            {lang === "en" ? `${loc.region} — ${loc.regionSub}` : loc.regionAr}
+                          </span>
+                          <span className="text-[9.5px] font-mono text-emerald-800 bg-emerald-50 border border-emerald-100 font-bold px-2 py-0.5 rounded">
+                            {loc.code}
+                          </span>
+                        </div>
+
+                        <div>
+                          <h3 className="text-sm font-bold text-emerald-800 font-sans tracking-tight">
+                            {lang === "en" ? loc.officeType : loc.officeTypeAr}
+                          </h3>
+                          <div className="flex items-start gap-1.5 mt-2 text-xs text-slate-700 font-sans leading-relaxed">
+                            <MapPin size={14} className="text-emerald-700 flex-shrink-0 mt-0.5" />
+                            <span>{lang === "en" ? loc.address : loc.addressAr}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 pt-3 border-t border-slate-100 space-y-1">
+                        <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider">
+                          <Truck size={12} className="text-emerald-700 flex-shrink-0" />
+                          <span>{lang === "en" ? "Shipping:" : "الشحن:"}</span>
+                        </div>
+                        <p className="text-[11px] font-serif text-slate-600 pl-4 leading-normal">
+                          {lang === "en" ? loc.shipping : loc.shippingAr}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -1725,12 +2362,6 @@ export default function App() {
                 <Mail size={14} className="text-emerald-500 flex-shrink-0" />
                 <a href="mailto:boraldabendaj.agikons@gmail.com" className="hover:text-emerald-400">
                   boraldabendaj.agikons@gmail.com
-                </a>
-              </div>
-              <div className="flex items-center gap-2">
-                <Mail size={14} className="text-emerald-500 flex-shrink-0" />
-                <a href="mailto:cysmedlcal.9@gmail.com" className="hover:text-emerald-400">
-                  cysmedlcal.9@gmail.com
                 </a>
               </div>
               <div className="flex items-start gap-2 text-[10px] text-slate-500 leading-normal font-sans font-normal pt-1.5">

@@ -1,1 +1,25 @@
 @import "tailwindcss";
+
+@keyframes jaesSoftPulse {
+  0%, 100% {
+    opacity: 0.65;
+    transform: scale(0.97);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.03);
+  }
+}
+
+.animate-jaes-loader {
+  animation: jaesSoftPulse 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  transform-origin: center center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-jaes-loader {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
